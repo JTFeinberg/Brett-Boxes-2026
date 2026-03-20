@@ -76,11 +76,10 @@
         </table>
     </div>
 
-    <button class="btn-csv" onclick="exportToCSV()">📥 Download 2025-Style CSV</button>
+    <button class="btn-csv" onclick="exportToCSV()">📥 Download Payout CSV</button>
 </div>
 
 <script>
-    // Full Participant List from spreadsheet
     const participants = [
         {"name":"Randy Gartside","pairs":[{"better":5,"worse":9},{"better":4,"worse":8}]},
         {"name":"Paneer Fitzpatrick-Mehrotra","pairs":[{"better":4,"worse":9}]},
@@ -153,10 +152,9 @@
         "Elite 8": {H:80, F:160}, "Final 4": {H:125, F:230}, "Championship": {H:215, F:505}
     };
 
-    let watchlist = JSON.parse(localStorage.getItem('mm_watchlist')) || ["Jacob Feinberg", "Ben Guzik"];
+    let watchlist = JSON.parse(localStorage.getItem('mm_watchlist')) || [];
     let globalStats = {};
 
-    // Populate dropdown
     const selector = document.getElementById('userSelector');
     [...participants].sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
         let opt = document.createElement('option'); opt.value = p.name; opt.text = p.name;
@@ -190,7 +188,7 @@
     }
 
     async function fetchScores(date) {
-        const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${date}&groups=100`;
+        const url = `https://site.api.espn.com/apis/site/v2/sports/scoreboard?dates=${date}&groups=100`;
         const res = await fetch(url);
         const data = await res.json();
         if (!data.events || data.events.length === 0) return { games: [], roundKey: "No Games" };
@@ -200,23 +198,27 @@
 
         const games = data.events.map(ev => {
             const teams = ev.competitions[0].competitors.map(t => ({
-                name: t.team.displayName, seed: parseInt(t.curatedRank.current) || 99,
-                h: t.linescores ? parseInt(t.linescores[0].value) || 0 : 0, f: parseInt(t.score) || 0
+                name: t.team.displayName, 
+                seed: parseInt(t.curatedRank.current) || 99,
+                h: t.linescores ? parseInt(t.linescores[0].value) || 0 : 0, 
+                f: parseInt(t.score) || 0
             })).sort((a,b) => a.seed - b.seed);
             
             const [B, W] = teams;
             let hits = [];
 
-            // Only calculate hits if game has started
+            // Strict winner logic: One H and one F winner per game only.
             if (ev.status.type.name !== 'STATUS_SCHEDULED') {
-                participants.forEach(p => p.pairs.forEach(pr => {
-                    if (pr.better === B.h%10 && pr.worse === W.h%10 && !hits.some(h => h.type === 'H')) {
-                        hits.push({name:p.name, type:'H', round:roundKey, amt: payouts[roundKey].H});
+                for (let p of participants) {
+                    for (let pr of p.pairs) {
+                        if (pr.better === B.h%10 && pr.worse === W.h%10 && !hits.some(h => h.type === 'H')) {
+                            hits.push({name:p.name, type:'H', round:roundKey, amt: payouts[roundKey].H});
+                        }
+                        if (pr.better === B.f%10 && pr.worse === W.f%10 && !hits.some(h => h.type === 'F')) {
+                            hits.push({name:p.name, type:'F', round:roundKey, amt: payouts[roundKey].F});
+                        }
                     }
-                    if (pr.better === B.f%10 && pr.worse === W.f%10 && !hits.some(h => h.type === 'F')) {
-                        hits.push({name:p.name, type:'F', round:roundKey, amt: payouts[roundKey].F});
-                    }
-                }));
+                }
             }
             return {matchup: `${B.seed} ${B.name} vs ${W.seed} ${W.name}`, hits, digits: `H:${B.h%10}:${W.h%10} F:${B.f%10}:${W.f%10}`, score: `${B.h}-${W.h} | ${B.f}-${W.f}`};
         });
