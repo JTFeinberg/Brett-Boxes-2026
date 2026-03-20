@@ -3,53 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 Boxes Dashboard</title>
+    <title>2026 March Madness Boxes</title>
     <style>
-        :root { --primary: #007bff; --success: #28a745; --dark: #1c1e21; --light: #f8f9fa; }
-        body { font-family: -apple-system, sans-serif; background: var(--light); padding: 10px; margin: 0; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .controls { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; justify-content: center; background: #eee; padding: 15px; border-radius: 8px; }
-        button { padding: 10px 16px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-csv { background: #6c757d; color: white; display: block; margin: 20px auto; width: 280px; }
-        .table-container { width: 100%; overflow-x: auto; margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f1f1f1; position: sticky; top: 0; }
-        .winner-row { background: #e8f5e9; font-weight: bold; }
+        :root { --primary: #007bff; --success: #28a745; --dark: #1c1e21; --light: #f4f7f6; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light); padding: 15px; margin: 0; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { text-align: center; color: var(--dark); margin-bottom: 5px; }
+        .round-banner { text-align: center; font-weight: bold; color: var(--primary); margin-bottom: 15px; font-size: 1.1rem; }
+        .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; justify-content: center; background: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 12px; }
+        button { padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: transform 0.1s; }
+        button:active { transform: scale(0.96); }
+        .btn-csv { background: #4b5563; color: white; display: block; margin: 30px auto; width: 300px; }
+        .table-container { width: 100%; overflow-x: auto; margin-top: 20px; border-radius: 8px; border: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f9fafb; color: #4b5563; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .match-row { background-color: #f0fdf4; }
+        .winner-text { color: #dc2626; font-weight: 700; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loader { display: none; text-align: center; padding: 20px; color: var(--primary); font-weight: bold; }
+        .spinner { width: 24px; height: 24px; border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="text-align:center">🏀 2026 Boxes Tracker</h1>
-    <div id="lastUpdated" style="text-align:center; font-size:0.8rem; color:#666">Ready</div>
+    <h1>🏀 2026 Digit Pool Dashboard</h1>
+    <div id="roundInfo" class="round-banner">Loading Tournament Data...</div>
+    <div id="lastUpdated" style="text-align:center; font-size:0.8rem; color:#888; margin-bottom: 20px;">Ready</div>
 
     <div class="controls">
-        <input type="date" id="dateInput" value="2026-03-19">
-        <button style="background:var(--primary); color:white" onclick="refreshDaily()">Check Day</button>
-        <button style="background:var(--success); color:white" onclick="refreshTotal()">Update Standings</button>
+        <input type="date" id="dateInput" style="padding:10px; border-radius:8px; border:1px solid #ccc; font-size:1rem;">
+        <button style="background:var(--primary); color:white" onclick="handleRefresh('daily')">Check Day</button>
+        <button style="background:var(--success); color:white" onclick="handleRefresh('total')">Update Standings</button>
     </div>
 
-    <div id="gameDisplay" class="table-container">
+    <div id="loading" class="loader"><div class="spinner"></div>Updating...</div>
+
+    <div class="table-container">
         <table id="gameTable">
             <thead><tr><th>Matchup</th><th>Winners</th><th>Digits</th><th>Score</th></tr></thead>
             <tbody id="gameBody"></tbody>
         </table>
     </div>
 
-    <h3 style="margin-top:40px">🏆 Tournament Leaderboard</h3>
+    <h3 style="margin-top:50px; border-bottom: 2px solid var(--dark); padding-bottom: 10px;">🏆 Overall Tournament Standings</h3>
     <div class="table-container">
         <table id="leaderboard">
-            <thead><tr><th>Rank</th><th>Name</th><th>Total Won</th><th>Hits</th></tr></thead>
+            <thead><tr><th>Rank</th><th>Name</th><th>Total Winnings</th><th>Hits</th></tr></thead>
             <tbody id="leaderboardBody"></tbody>
         </table>
     </div>
-    
-    <button class="btn-csv" onclick="exportToCSV()">📥 Download 2025-Style Detailed CSV</button>
+
+    <button class="btn-csv" onclick="exportToCSV()">📥 Download Detailed 2025-Style CSV</button>
 </div>
 
 <script>
-    // Full 100-Box Mapping from the "Boxes" tab
     const participants = [
         {"name":"Randy Gartside","pairs":[{"better":5,"worse":9},{"better":4,"worse":8}]},
         {"name":"Paneer Fitzpatrick-Mehrotra","pairs":[{"better":4,"worse":9}]},
@@ -122,16 +131,30 @@
         "Elite 8": {H:80, F:160}, "Final 4": {H:125, F:230}, "Championship": {H:215, F:505}
     };
 
-    let globalTotals = {};
+    document.getElementById('dateInput').value = "2026-03-19";
+    let tournamentStats = {};
+
+    async function handleRefresh(type) {
+        document.getElementById('loading').style.display = 'block';
+        if (type === 'daily') await refreshDaily(); else await refreshTotal();
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('lastUpdated').innerText = `Updated: ${new Date().toLocaleTimeString()}`;
+    }
 
     async function fetchScores(date) {
         const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${date}&groups=100`;
         const res = await fetch(url);
         const data = await res.json();
+        if (!data.events || data.events.length === 0) return { games: [], roundKey: "No Games" };
+        
         const headline = data.events[0]?.competitions[0]?.notes[0]?.headline || "";
         let roundKey = Object.keys(payouts).find(k => headline.includes(k)) || "1st Round";
-        
-        return data.events.map(ev => {
+        const round = payouts[roundKey];
+
+        const games = data.events.map(ev => {
+            // BUG FIX: Ignore games that haven't started yet (prevents 0-0 ghost hits)
+            if (ev.status.type.name === 'STATUS_SCHEDULED') return null;
+
             const teams = ev.competitions[0].competitors.map(t => ({
                 name: t.team.displayName, seed: parseInt(t.curatedRank.current) || 99,
                 h: t.linescores ? parseInt(t.linescores[0].value) : 0, f: parseInt(t.score) || 0
@@ -139,60 +162,64 @@
             const [B, W] = teams;
             let hits = [];
             participants.forEach(p => p.pairs.forEach(pr => {
-                if (pr.better === B.h%10 && pr.worse === W.h%10) hits.push({name:p.name, type:'H', round:roundKey});
-                if (pr.better === B.f%10 && pr.worse === W.f%10) hits.push({name:p.name, type:'F', round:roundKey});
+                if (pr.better === B.h%10 && pr.worse === W.h%10) hits.push({name:p.name, type:'H', round:roundKey, amt: round.H});
+                if (pr.better === B.f%10 && pr.worse === W.f%10) hits.push({name:p.name, type:'F', round:roundKey, amt: round.F});
             }));
             return {match: `${B.seed} ${B.name} vs ${W.seed} ${W.name}`, hits, digits: `H:${B.h%10}:${W.h%10} F:${B.f%10}:${W.f%10}`, score: `${B.h}-${W.h} | ${B.f}-${W.f}`};
-        });
+        }).filter(g => g !== null);
+        return { games, roundKey };
     }
 
     async function refreshDaily() {
         const date = document.getElementById('dateInput').value.replace(/-/g,'');
-        const results = await fetchScores(date);
+        const { games, roundKey } = await fetchScores(date);
+        document.getElementById('roundInfo').innerText = roundKey;
         const body = document.getElementById('gameBody'); body.innerHTML = '';
-        results.forEach(r => {
-            const row = body.insertRow(); if(r.hits.length) row.className = 'winner-row';
-            row.innerHTML = `<td>${r.match}</td><td>${r.hits.map(h => `${h.name}(${h.type})`).join(', ') || '-'}</td><td>${r.digits}</td><td>${r.score}</td>`;
+        games.forEach(r => {
+            const row = body.insertRow(); if(r.hits.length) row.className = 'match-row';
+            row.innerHTML = `<td>${r.match}</td><td class="winner-text">${r.hits.map(h => `${h.name}(${h.type})`).join(', ') || '-'}</td><td>${r.digits}</td><td>${r.score}</td>`;
         });
-        document.getElementById('lastUpdated').innerText = `Updated: ${new Date().toLocaleTimeString()}`;
     }
 
     async function refreshTotal() {
         const start = new Date(2026, 2, 19); const today = new Date();
-        let totals = {}; participants.forEach(p => totals[p.name] = {money:0, hits:0, history:[]});
+        participants.forEach(p => tournamentStats[p.name] = { money: 0, hits: 0, history: [] });
 
         for (let d = new Date(start); d <= today; d.setDate(d.getDate()+1)) {
             const dStr = d.toISOString().split('T')[0].replace(/-/g,'');
             try {
-                const games = await fetchScores(dStr);
+                const { games } = await fetchScores(dStr);
                 games.forEach(g => g.hits.forEach(h => {
-                    totals[h.name].money += payouts[h.round][h.type];
-                    totals[h.name].hits++;
-                    totals[h.name].history.push(h);
+                    tournamentStats[h.name].money += h.amt;
+                    tournamentStats[h.name].hits++;
+                    tournamentStats[h.name].history.push(h);
                 }));
             } catch(e) {}
         }
 
-        const sorted = Object.entries(totals).sort((a,b) => b[1].money - a[1].money);
+        const sorted = Object.entries(tournamentStats).sort((a,b) => b[1].money - a[1].money);
         const body = document.getElementById('leaderboardBody'); body.innerHTML = '';
         sorted.forEach(([name, data], i) => {
-            body.insertRow().innerHTML = `<td>${i+1}</td><td>${name}</td><td>$${data.money}</td><td>${data.hits}</td>`;
+            body.insertRow().innerHTML = `<td>${i+1}</td><td>${name}</td><td style="color:var(--success); font-weight:bold">$${data.money}</td><td>${data.hits}</td>`;
         });
-        globalTotals = totals;
     }
 
     function exportToCSV() {
-        let headers = ["Name"];
-        Object.keys(payouts).forEach(r => headers.push(`${r} (H)`, `${r} (F)`, `${r} Total`));
-        headers.push("Tournament Total");
+        const rounds = Object.keys(payouts);
+        let headerRow = ["Name"];
+        rounds.forEach(r => headerRow.push(`${r} Halftime`, `${r} Final`, `${r} Total`));
+        headerRow.push("Grand Total");
 
-        let rows = [headers];
-        participants.forEach(p => {
+        // Sort participants alphabetically by name for the CSV
+        const alphaParticipants = [...participants].sort((a,b) => a.name.localeCompare(b.name));
+        let rows = [headerRow];
+
+        alphaParticipants.forEach(p => {
             let row = [p.name];
             let grandTotal = 0;
-            Object.keys(payouts).forEach(r => {
-                const h = globalTotals[p.name].history.filter(win => win.round === r && win.type === 'H').length * payouts[r].H;
-                const f = globalTotals[p.name].history.filter(win => win.round === r && win.type === 'F').length * payouts[r].F;
+            rounds.forEach(r => {
+                const h = tournamentStats[p.name].history.filter(win => win.round === r && win.type === 'H').reduce((sum, win) => sum + win.amt, 0);
+                const f = tournamentStats[p.name].history.filter(win => win.round === r && win.type === 'F').reduce((sum, win) => sum + win.amt, 0);
                 row.push(`$${h}`, `$${f}`, `$${h+f}`);
                 grandTotal += (h+f);
             });
@@ -202,11 +229,11 @@
 
         const csv = rows.map(r => r.join(",")).join("\n");
         const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
+        const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url; a.download = '2026_Tournament_Report.csv'; a.click();
     }
 
-    refreshDaily(); refreshTotal();
+    handleRefresh('daily');
 </script>
 </body>
 </html>
