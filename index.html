@@ -5,86 +5,118 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2026 March Madness Boxes</title>
     <style>
-        :root { --primary: #007bff; --success: #28a745; --dark: #1a1a1a; --light: #f4f7f6; }
+        :root { --primary: #007bff; --success: #28a745; --live: #ff0000; --dark: #1a1a1a; --light: #f4f7f6; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--light); padding: 10px; color: var(--dark); margin: 0; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
         h1 { text-align: center; margin-bottom: 5px; }
         .round-banner { text-align: center; font-weight: bold; color: var(--primary); margin-bottom: 2px; }
         #lastUpdated { text-align: center; font-size: 0.75rem; color: #888; margin-bottom: 20px; font-style: italic; }
 
-        /* Multi-Select Watchlist UI */
+        /* Watchlist UI */
         .watchlist-section { background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
-        .watchlist-label { display: block; font-weight: bold; margin-bottom: 10px; font-size: 0.9rem; text-align: center;}
+        .section-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .search-box { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin: 15px 0 10px 0; box-sizing: border-box; }
         .selector-container { max-height: 150px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 5px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 5px; }
-        .user-option { font-size: 0.8rem; padding: 5px 10px; cursor: pointer; border-radius: 4px; border: 1px solid transparent; background: #f9fafb; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .user-option:hover { background: #eef2ff; }
-        .user-option.selected { background: var(--primary); color: white; border-color: var(--primary); }
+        .user-option { font-size: 0.8rem; padding: 5px 10px; cursor: pointer; border-radius: 4px; background: #f9fafb; transition: all 0.2s; }
+        .user-option.selected { background: var(--primary); color: white; }
 
+        /* Luxe Cards */
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
-        .user-card { background: white; border: 1px solid #eee; padding: 15px; border-radius: 12px; text-align: center; border-bottom: 4px solid #ddd; position: relative; }
+        .user-card { background: white; border: 1px solid #eee; padding: 15px; border-radius: 12px; text-align: center; border-bottom: 4px solid #ddd; position: relative; cursor: pointer; transition: transform 0.2s; }
+        .user-card:hover { transform: translateY(-3px); }
         .user-card.winner { border-color: var(--success); background: #f0fff4; }
+        .remove-x { position: absolute; top: 5px; right: 10px; color: #ccc; font-weight: bold; font-size: 14px; cursor: pointer; z-index: 10; padding: 5px; }
         .amount { font-size: 1.4rem; font-weight: 800; color: var(--success); display: block; }
 
+        /* Live Indicator */
+        .live-dot { height: 10px; width: 10px; background-color: #28a745; border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 8px #28a745; animation: pulse-green 2s infinite; }
+        @keyframes pulse-green { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); } }
+        .live-text { color: var(--success); font-weight: bold; font-size: 0.7rem; vertical-align: middle; margin-right: 10px; }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); }
+        .modal-content { background: white; margin: 5% auto; padding: 25px; border-radius: 12px; width: 90%; max-width: 650px; max-height: 80vh; overflow-y: auto; }
+        .close-modal { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+
         .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; justify-content: center; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 12px; }
-        
-        /* Button Animations */
-        button { padding: 10px 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); outline: none; }
-        button:active { transform: scale(0.92); box-shadow: inset 0 3px 5px rgba(0,0,0,0.1); }
+        button { padding: 10px 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: all 0.2s; outline: none; }
+        button:active { transform: scale(0.92); }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-csv { background: #4b5563; color: white; display: block; margin: 30px auto; width: 280px; }
-        button:hover { filter: brightness(1.1); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
 
-        .table-container { width: 100%; overflow-x: auto; border-radius: 8px; border: 1px solid #eee; }
+        .table-container { width: 100%; overflow-x: auto; border: 1px solid #eee; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; color: #4b5563; text-transform: uppercase; font-size: 0.75rem; }
-        
+        th { background: #f8f9fa; color: #4b5563; text-transform: uppercase; font-size: 0.7rem; }
         .winner-bold { color: #000; font-weight: 800; }
-        .hide-mobile { display: none; }
-        @media (min-width: 600px) { .hide-mobile { display: table-cell; } }
+        .no-games { text-align: center; padding: 40px; color: #888; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>🏀 2026 Boxes Tracker</h1>
-    <div id="roundInfo" class="round-banner">Syncing...</div>
+    <div id="roundInfo" class="round-banner">Detecting Round...</div>
     <div id="lastUpdated">Updated: --:--</div>
     
-    <div class="watchlist-section">
-        <span class="watchlist-label">Quick-Toggle Watchlist (Click names to track)</span>
-        <div id="multiSelector" class="selector-container"></div>
-        <div style="text-align: right; margin-top: 10px;">
-            <button onclick="clearWatchlist()" style="background:none; color:#999; font-size:11px; text-decoration:underline;">Clear Watchlist</button>
+    <div id="watchlistSection" class="watchlist-section">
+        <div class="section-header" onclick="toggleWatchlistUI()">
+            <strong>Watchlist & Filters</strong>
+            <span id="toggleLabel" style="font-size: 0.8rem; color: var(--primary);">[Hide]</span>
+        </div>
+        <div id="watchlistContent">
+            <input type="text" id="userSearch" class="search-box" placeholder="Search names..." oninput="filterUserList()">
+            <div id="multiSelector" class="selector-container"></div>
+            <div style="text-align: right; margin-top: 10px;">
+                <button onclick="clearWatchlist()" style="background:none; color:#999; font-size:11px; text-decoration:underline;">Clear All</button>
+            </div>
         </div>
     </div>
 
     <div id="userSummary" class="summary-grid"></div>
 
     <div class="controls">
-        <input type="date" id="dateInput" value="2026-03-19" style="padding:8px; border-radius:6px; border:1px solid #ccc;">
-        <button class="btn-primary" onclick="handleRefresh('daily')">Check Day</button>
+        <input type="date" id="dateInput" onchange="handleDateChange()" style="padding:8px; border-radius:6px; border:1px solid #ccc;">
+        <button class="btn-primary" onclick="handleRefresh('daily')">Refresh Day</button>
         <button class="btn-success" onclick="handleRefresh('total')">Update Standings</button>
     </div>
 
     <div class="table-container">
         <table id="gameTable">
-            <thead><tr><th>Matchup</th><th>Winners</th><th>Digits</th><th class="hide-mobile">Full Score</th></tr></thead>
+            <thead><tr><th>Matchup</th><th>Winners</th><th>Digits</th><th>Score</th></tr></thead>
             <tbody id="gameBody"></tbody>
         </table>
+        <div id="noGamesMessage" class="no-games" style="display:none;">No tournament games scheduled for this date.</div>
     </div>
 
-    <h3 style="margin-top:40px; border-bottom: 2px solid #000; padding-bottom:5px;">🏆 Tournament Leaderboard</h3>
+    <!-- <h3 style="margin-top:40px; border-bottom: 2px solid #000; padding-bottom:5px;">🏆 Tournament Leaderboard</h3> -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 40px; border-bottom: 2px solid #000; padding-bottom: 5px;">
+        <h3 style="margin: 0;">🏆 Tournament Leaderboard</h3>
+        <button id="csvBtn" style="background: #4b5563; color: white; padding: 8px 16px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85rem;" onclick="exportToCSV()">📥 Download Detailed CSV</button>
+    </div>
+    
     <div class="table-container">
         <table id="leaderboard">
             <thead><tr><th>Rank</th><th>Name</th><th>Total Won</th><th>Hits</th></tr></thead>
             <tbody id="leaderboardBody"></tbody>
         </table>
     </div>
+</div>
 
-    <button class="btn-csv" onclick="exportToCSV()">📥 Download 2025-Style CSV</button>
+<div id="userModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeUserDetail()">&times;</span>
+        <h2 id="modalUserName" style="margin-top:0">User Details</h2>
+        <div id="modalStats" style="margin-bottom:20px; padding:10px; background:#f8f9fa; border-radius:8px;"></div>
+        <div class="table-container">
+            <table>
+                <thead><tr><th>Match</th><th>Type</th><th>Round</th><th>Payout</th></tr></thead>
+                <tbody id="modalTableBody"></tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -163,107 +195,133 @@
     let watchlist = JSON.parse(localStorage.getItem('mm_watchlist')) || [];
     let globalStats = {};
 
-    // Initial load of the multi-selector
-    const selector = document.getElementById('multiSelector');
-    [...participants].sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
-        let div = document.createElement('div');
-        div.className = `user-option ${watchlist.includes(p.name) ? 'selected' : ''}`;
-        div.innerText = p.name;
-        div.onclick = () => toggleUser(p.name, div);
-        selector.appendChild(div);
-    });
+    function filterUserList() {
+        const query = document.getElementById('userSearch').value.toLowerCase();
+        const container = document.getElementById('multiSelector');
+        container.innerHTML = '';
+        participants.filter(p => p.name.toLowerCase().includes(query)).sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
+            let div = document.createElement('div');
+            div.className = `user-option ${watchlist.includes(p.name) ? 'selected' : ''}`;
+            div.innerText = p.name;
+            div.onclick = () => toggleUser(p.name);
+            container.appendChild(div);
+        });
+    }
 
-    function toggleUser(name, element) {
-        if (watchlist.includes(name)) {
-            watchlist = watchlist.filter(n => n !== name);
-            element.classList.remove('selected');
-        } else {
-            watchlist.push(name);
-            element.classList.add('selected');
-        }
+    function toggleUser(name) {
+        watchlist = watchlist.includes(name) ? watchlist.filter(n => n !== name) : [...watchlist, name];
         localStorage.setItem('mm_watchlist', JSON.stringify(watchlist));
+        filterUserList();
         refreshDaily();
+    }
+
+    function toggleWatchlistUI() {
+        const content = document.getElementById('watchlistContent');
+        const label = document.getElementById('toggleLabel');
+        const isHidden = content.style.display === 'none';
+        content.style.display = isHidden ? 'block' : 'none';
+        label.innerText = isHidden ? '[Hide]' : '[Expand]';
     }
 
     function clearWatchlist() {
-        watchlist = [];
-        localStorage.removeItem('mm_watchlist');
-        document.querySelectorAll('.user-option').forEach(el => el.classList.remove('selected'));
-        refreshDaily();
+        watchlist = []; localStorage.removeItem('mm_watchlist');
+        filterUserList(); refreshDaily();
     }
 
-    async function handleRefresh(type) {
-        if (type === 'daily') await refreshDaily(); else await refreshTotal();
-        document.getElementById('lastUpdated').innerText = `Updated: ${new Date().toLocaleTimeString()}`;
+    function showUserDetail(name) {
+        const stats = globalStats[name];
+        if (!stats) return;
+        document.getElementById('modalUserName').innerText = name;
+        document.getElementById('modalStats').innerHTML = `<strong>Tournament Total: $${stats.money}</strong> | <strong>Total Hits: ${stats.hits}</strong>`;
+        const body = document.getElementById('modalTableBody'); body.innerHTML = '';
+        stats.history.forEach(h => {
+            const row = body.insertRow();
+            row.innerHTML = `<td>${h.match}</td><td>${h.type === 'H' ? 'Half' : 'Final'}</td><td>${h.round}</td><td>$${h.amt}</td>`;
+        });
+        document.getElementById('userModal').style.display = "block";
     }
+
+    function closeUserDetail() { document.getElementById('userModal').style.display = "none"; }
 
     async function fetchScores(date) {
-        // Corrected stable API endpoint
         const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${date}&groups=100`;
         const res = await fetch(url);
         const data = await res.json();
         if (!data.events || data.events.length === 0) return { games: [], roundKey: "No Games" };
-        
         const headline = data.events[0]?.competitions[0]?.notes[0]?.headline || "";
         let roundKey = Object.keys(payouts).find(k => headline.includes(k)) || "1st Round";
-
+        
         const games = data.events.map(ev => {
+            const status = ev.status.type.name;
+            const period = ev.status.period;
             const teams = ev.competitions[0].competitors.map(t => ({
-                name: t.team.displayName, 
-                seed: parseInt(t.curatedRank.current) || 99,
-                h: t.linescores ? parseInt(t.linescores[0].value) || 0 : 0, 
-                f: parseInt(t.score) || 0
+                name: t.team.displayName, seed: parseInt(t.curatedRank.current) || 99,
+                h: t.linescores ? parseInt(t.linescores[0].value) || 0 : 0, f: parseInt(t.score) || 0
             })).sort((a,b) => a.seed - b.seed);
-            
             const [B, W] = teams;
             let hits = [];
 
-            if (ev.status.type.name !== 'STATUS_SCHEDULED') {
-                for (let p of participants) {
-                    for (let pr of p.pairs) {
+            // Segmented winner logic
+            if (status !== 'STATUS_SCHEDULED') {
+                participants.forEach(p => p.pairs.forEach(pr => {
+                    // Halftime hits only show if we are past the 1st Half
+                    if (period >= 2 || status === 'STATUS_FINAL') {
                         if (pr.better === B.h%10 && pr.worse === W.h%10 && !hits.some(h => h.type === 'H')) {
-                            hits.push({name:p.name, type:'H', round:roundKey, amt: payouts[roundKey].H});
-                        }
-                        if (pr.better === B.f%10 && pr.worse === W.f%10 && !hits.some(h => h.type === 'F')) {
-                            hits.push({name:p.name, type:'F', round:roundKey, amt: payouts[roundKey].F});
+                            hits.push({name:p.name, type:'H', round:roundKey, amt: payouts[roundKey].H, match: ev.name});
                         }
                     }
-                }
+                    // Final hits only show if game is actually Final
+                    if (status === 'STATUS_FINAL') {
+                        if (pr.better === B.f%10 && pr.worse === W.f%10 && !hits.some(h => h.type === 'F')) {
+                            hits.push({name:p.name, type:'F', round:roundKey, amt: payouts[roundKey].F, match: ev.name});
+                        }
+                    }
+                }));
             }
-            return {matchup: `${B.seed} ${B.name} vs ${W.seed} ${W.name}`, hits, digits: `H:${B.h%10}:${W.h%10} F:${B.f%10}:${W.f%10}`, score: `${B.h}-${W.h} | ${B.f}-${W.f}`};
+            return {matchup: `${B.seed} ${B.name} vs ${W.seed} ${W.name}`, hits, digits: `H:${B.h%10}:${W.h%10} F:${B.f%10}:${W.f%10}`, score: `${B.h}-${W.h} | ${B.f}-${W.f}`, status};
         });
         return { games, roundKey };
     }
 
     async function refreshDaily() {
-        const date = document.getElementById('dateInput').value.replace(/-/g,'');
-        const { games, roundKey } = await fetchScores(date);
+        const dateInput = document.getElementById('dateInput').value.replace(/-/g,'');
+        const { games, roundKey } = await fetchScores(dateInput);
         document.getElementById('roundInfo').innerText = roundKey;
         const body = document.getElementById('gameBody'); body.innerHTML = '';
         const summary = document.getElementById('userSummary'); summary.innerHTML = '';
+        const noGames = document.getElementById('noGamesMessage');
+        const gameTable = document.getElementById('gameTable');
         
-        let dailyWins = {};
-        watchlist.forEach(name => dailyWins[name] = {total: 0, hits: 0});
-
-        games.forEach(g => {
-            const row = body.insertRow();
-            g.hits.forEach(h => { if(watchlist.includes(h.name)) { dailyWins[h.name].total += h.amt; dailyWins[h.name].hits++; } });
-            row.innerHTML = `<td>${g.matchup}</td><td class="winner-bold">${g.hits.map(h => `${h.name}(${h.type})`).join(', ') || '-'}</td><td>${g.digits}</td><td class="hide-mobile">${g.score}</td>`;
-        });
-
-        watchlist.forEach(name => {
-            const stats = dailyWins[name];
-            const card = document.createElement('div');
-            card.className = `user-card ${stats.total > 0 ? 'winner' : ''}`;
-            card.innerHTML = `<strong>${name}</strong><span class="amount">$${stats.total}</span><small>${stats.hits} Hits</small>`;
-            summary.appendChild(card);
-        });
+        if (games.length === 0) {
+            noGames.style.display = 'block';
+            gameTable.style.display = 'none';
+        } else {
+            noGames.style.display = 'none';
+            gameTable.style.display = 'table';
+            let dailyWins = {};
+            watchlist.forEach(name => dailyWins[name] = {total: 0, hits: 0});
+            games.forEach(g => {
+                const row = body.insertRow();
+                g.hits.forEach(h => { if(watchlist.includes(h.name)) { dailyWins[h.name].total += h.amt; dailyWins[h.name].hits++; } });
+                
+                const liveMarkup = g.status.includes('IN_PROGRESS') ? '<span class="live-dot"></span><span class="live-text">LIVE</span>' : '';
+                row.innerHTML = `<td>${liveMarkup}${g.matchup}</td><td class="winner-bold">${g.hits.map(h => `${h.name}(${h.type})`).join(', ') || '-'}</td><td>${g.digits}</td><td>${g.score}</td>`;
+            });
+            watchlist.forEach(name => {
+                const stats = dailyWins[name] || {total:0, hits:0};
+                const card = document.createElement('div');
+                card.className = `user-card ${stats.total > 0 ? 'winner' : ''}`;
+                card.onclick = () => showUserDetail(name);
+                card.innerHTML = `<span class="remove-x" onclick="event.stopPropagation(); toggleUser('${name}')">✕</span><strong>${name}</strong><span class="amount">$${stats.total}</span><small>${stats.hits} Hits Today</small>`;
+                summary.appendChild(card);
+            });
+        }
+        document.getElementById('lastUpdated').innerText = `Updated: ${new Date().toLocaleTimeString()}`;
     }
 
     async function refreshTotal() {
         const start = new Date(2026, 2, 19); const today = new Date();
         participants.forEach(p => globalStats[p.name] = { money: 0, hits: 0, history: [] });
-
         for (let d = new Date(start); d <= today; d.setDate(d.getDate()+1)) {
             const dStr = d.toISOString().split('T')[0].replace(/-/g,'');
             try {
@@ -275,21 +333,40 @@
                 }));
             } catch(e) {}
         }
-
         const sorted = Object.entries(globalStats).sort((a,b) => b[1].money - a[1].money);
         const lbBody = document.getElementById('leaderboardBody'); lbBody.innerHTML = '';
         sorted.forEach(([name, data], i) => {
-            lbBody.insertRow().innerHTML = `<td>${i+1}</td><td>${name}</td><td style="color:var(--success); font-weight:bold">$${data.money}</td><td>${data.hits}</td>`;
+            const row = lbBody.insertRow();
+            row.innerHTML = `<td>${i+1}</td><td>${name}</td><td style="color:var(--success); font-weight:bold">$${data.money}</td><td>${data.hits}</td>`;
         });
     }
 
+    async function handleRefresh(type) {
+        if (type === 'total') {
+            await refreshTotal();
+            await refreshDaily();
+        } else {
+            await refreshDaily();
+        }
+    }
+
+    async function handleDateChange() {
+        await refreshDaily();
+    }
+
     function exportToCSV() {
+        if (!globalStats || Object.keys(globalStats).length === 0) {
+            alert("Please update standings first to generate the report.");
+            return;
+        }
         const rounds = Object.keys(payouts);
         let headerRow = ["Name"];
         rounds.forEach(r => headerRow.push(`${r} Halftime`, `${r} Final`, `${r} Total`));
         headerRow.push("Grand Total");
+
         const alphaParticipants = [...participants].sort((a,b) => a.name.localeCompare(b.name));
         let rows = [headerRow];
+
         alphaParticipants.forEach(p => {
             let row = [p.name];
             let grandTotal = 0;
@@ -301,17 +378,23 @@
             });
             row.push(`$${grandTotal}`); rows.push(row);
         });
+
         const csv = rows.map(r => r.join(",")).join("\n");
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = '2026_Tournament_Report.csv'; a.click();
+        const a = document.createElement('a'); a.href = url; a.download = '2026_Tournament_Payouts.csv'; a.click();
     }
 
-    // AUTO-LOAD on Page load
+    window.onclick = function(event) { if (event.target == document.getElementById('userModal')) closeUserDetail(); }
+
     window.onload = async () => {
-        await refreshTotal(); // Update standings first
-        await refreshDaily(); // Then load today's view
-        document.getElementById('lastUpdated').innerText = `Updated: ${new Date().toLocaleTimeString()}`;
+        // Set date input to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('dateInput').value = today;
+        
+        filterUserList();
+        await refreshTotal();
+        await refreshDaily();
     };
 </script>
 </body>
