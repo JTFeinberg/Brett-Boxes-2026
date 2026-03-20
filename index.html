@@ -52,6 +52,18 @@
         th { background: #f8f9fa; color: #4b5563; text-transform: uppercase; font-size: 0.7rem; }
         .winner-bold { color: #000; font-weight: 800; }
         .no-games { text-align: center; padding: 40px; color: #888; font-style: italic; }
+        
+        /* Game Status Filters */
+        .filter-buttons { display: flex; gap: 8px; margin-bottom: 15px; justify-content: center; flex-wrap: wrap; }
+        .filter-btn { padding: 8px 16px; border-radius: 6px; border: 2px solid #ddd; background: white; color: #666; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .filter-btn:hover { border-color: var(--primary); }
+        
+        /* Game Time Display */
+        .game-time { display: block; font-size: 0.7rem; color: #888; margin-top: 3px; font-weight: normal; }
+        
+        /* Auto-refresh indicator */
+        .auto-refresh-indicator { display: inline-block; margin-left: 8px; font-size: 0.7rem; color: var(--success); font-weight: normal; }
     </style>
 </head>
 <body>
@@ -81,6 +93,13 @@
         <input type="date" id="dateInput" onchange="handleDateChange()" style="padding:8px; border-radius:6px; border:1px solid #ccc;">
         <button class="btn-primary" onclick="handleRefresh('daily')">Refresh Day</button>
         <button class="btn-success" onclick="handleRefresh('total')">Update Standings</button>
+    </div>
+
+    <div class="filter-buttons">
+        <button class="filter-btn active" data-filter="all" onclick="setGameFilter('all')">All Games</button>
+        <button class="filter-btn" data-filter="live" onclick="setGameFilter('live')">Live</button>
+        <button class="filter-btn" data-filter="final" onclick="setGameFilter('final')">Final</button>
+        <button class="filter-btn" data-filter="upcoming" onclick="setGameFilter('upcoming')">Upcoming</button>
     </div>
 
     <div class="table-container">
@@ -194,6 +213,9 @@
 
     let watchlist = JSON.parse(localStorage.getItem('mm_watchlist')) || [];
     let globalStats = {};
+    let autoRefreshInterval = null;
+    let currentGameFilter = 'all';
+    let allGamesData = [];
 
     function filterUserList() {
         const query = document.getElementById('userSearch').value.toLowerCase();
@@ -243,6 +265,57 @@
 
     function closeUserDetail() { document.getElementById('userModal').style.display = "none"; }
 
+    function startAutoRefresh() {
+        if (autoRefreshInterval) return;
+        autoRefreshInterval = setInterval(() => {
+            refreshDaily();
+        }, 30000); // Refresh every 30 seconds
+        updateLastUpdatedText();
+    }
+
+    function stopAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+        }
+        updateLastUpdatedText();
+    }
+
+    function updateLastUpdatedText() {
+        const baseText = `Updated: ${new Date().toLocaleTimeString()}`;
+        const indicator = autoRefreshInterval ? '<span class="auto-refresh-indicator">● Auto-refreshing</span>' : '';
+        document.getElementById('lastUpdated').innerHTML = baseText + indicator;
+    }
+
+    function setGameFilter(filter) {
+        currentGameFilter = filter;
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+        });
+        renderFilteredGames();
+    }
+
+    function renderFilteredGames() {
+        const body = document.getElementById('gameBody');
+        body.innerHTML = '';
+        
+        let filteredGames = allGamesData;
+        if (currentGameFilter === 'live') {
+            filteredGames = allGamesData.filter(g => g.status.includes('IN_PROGRESS'));
+        } else if (currentGameFilter === 'final') {
+            filteredGames = allGamesData.filter(g => g.status === 'STATUS_FINAL');
+        } else if (currentGameFilter === 'upcoming') {
+            filteredGames = allGamesData.filter(g => g.status === 'STATUS_SCHEDULED');
+        }
+        
+        filteredGames.forEach(g => {
+            const row = body.insertRow();
+            const liveMarkup = g.status.includes('IN_PROGRESS') ? '<span class="live-dot"></span><span class="live-text">LIVE</span>' : '';
+            const timeDisplay = g.gameTime ? `<span class="game-time">${g.gameTime}</span>` : '';
+            row.innerHTML = `<td>${liveMarkup}${g.matchup}${timeDisplay}</td><td class="winner-bold">${g.hits.map(h => `${h.name}(${h.type})`).join(', ') || '-'}</td><td>${g.digits}</td><td>${g.score}</td>`;
+        });
+    }
+
     async function fetchScores(date) {
         const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${date}&groups=100`;
         const res = await fetch(url);
@@ -254,6 +327,16 @@
         const games = data.events.map(ev => {
             const status = ev.status.type.name;
             const period = ev.status.period;
+            
+            // Extract game time
+            let gameTime = '';
+            if (status === 'STATUS_SCHEDULED' && ev.date) {
+                const gameDate = new Date(ev.date);
+                gameTime = gameDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            } else if (status.includes('IN_PROGRESS')) {
+                gameTime = ev.status.displayClock || 'Live';
+            }
+            
             const teams = ev.competitions[0].competitors.map(t => ({
                 name: t.team.displayName, seed: parseInt(t.curatedRank.current) || 99,
                 h: t.linescores ? parseInt(t.linescores[0].value) || 0 : 0, f: parseInt(t.score) || 0
@@ -278,7 +361,14 @@
                     }
                 }));
             }
-            return {matchup: `${B.seed} ${B.name} vs ${W.seed} ${W.name}`, hits, digits: `H:${B.h%10}:${W.h%10} F:${B.f%10}:${W.f%10}`, score: `${B.h}-${W.h} | ${B.f}-${W.f}`, status};
+            return {
+                matchup: `${B.seed} ${B.name} vs ${W.seed} ${W.name}`, 
+                hits, 
+                digits: `H:${B.h%10}:${W.h%10} F:${B.f%10}:${W.f%10}`, 
+                score: `${B.h}-${W.h} | ${B.f}-${W.f}`, 
+                status,
+                gameTime
+            };
         });
         return { games, roundKey };
     }
@@ -287,7 +377,9 @@
         const dateInput = document.getElementById('dateInput').value.replace(/-/g,'');
         const { games, roundKey } = await fetchScores(dateInput);
         document.getElementById('roundInfo').innerText = roundKey;
-        const body = document.getElementById('gameBody'); body.innerHTML = '';
+        
+        allGamesData = games;
+        
         const summary = document.getElementById('userSummary'); summary.innerHTML = '';
         const noGames = document.getElementById('noGamesMessage');
         const gameTable = document.getElementById('gameTable');
@@ -295,18 +387,28 @@
         if (games.length === 0) {
             noGames.style.display = 'block';
             gameTable.style.display = 'none';
+            stopAutoRefresh();
         } else {
             noGames.style.display = 'none';
             gameTable.style.display = 'table';
+            
+            // Check for live games and manage auto-refresh
+            const hasLiveGames = games.some(g => g.status.includes('IN_PROGRESS'));
+            if (hasLiveGames) {
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+            
             let dailyWins = {};
             watchlist.forEach(name => dailyWins[name] = {total: 0, hits: 0});
             games.forEach(g => {
-                const row = body.insertRow();
                 g.hits.forEach(h => { if(watchlist.includes(h.name)) { dailyWins[h.name].total += h.amt; dailyWins[h.name].hits++; } });
-                
-                const liveMarkup = g.status.includes('IN_PROGRESS') ? '<span class="live-dot"></span><span class="live-text">LIVE</span>' : '';
-                row.innerHTML = `<td>${liveMarkup}${g.matchup}</td><td class="winner-bold">${g.hits.map(h => `${h.name}(${h.type})`).join(', ') || '-'}</td><td>${g.digits}</td><td>${g.score}</td>`;
             });
+            
+            // Render filtered games
+            renderFilteredGames();
+            
             watchlist.forEach(name => {
                 const stats = dailyWins[name] || {total:0, hits:0};
                 const card = document.createElement('div');
@@ -316,7 +418,7 @@
                 summary.appendChild(card);
             });
         }
-        document.getElementById('lastUpdated').innerText = `Updated: ${new Date().toLocaleTimeString()}`;
+        updateLastUpdatedText();
     }
 
     async function refreshTotal() {
@@ -351,6 +453,11 @@
     }
 
     async function handleDateChange() {
+        stopAutoRefresh();
+        currentGameFilter = 'all';
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === 'all');
+        });
         await refreshDaily();
     }
 
@@ -395,6 +502,10 @@
         filterUserList();
         await refreshTotal();
         await refreshDaily();
+    };
+
+    window.onbeforeunload = function() {
+        stopAutoRefresh();
     };
 </script>
 </body>
